@@ -18,6 +18,9 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
+
+from __future__ import division, absolute_import
+
 import logging
 import time
 
@@ -76,8 +79,8 @@ class SSD1306Base(object):
 		self._i2c = None
 		self.width = width
 		self.height = height
-		self._pages = height/8
-		self._buffer = [0]*(width*self._pages)
+		self._pages = int(height/8)
+		self._buffer = [0] * int(width * self._pages)
 		# Default to platform GPIO if not provided.
 		self._gpio = gpio
 		if self._gpio is None:
