@@ -53,6 +53,9 @@ SSD1306_SEGREMAP = 0xA0
 SSD1306_CHARGEPUMP = 0x8D
 SSD1306_EXTERNALVCC = 0x1
 SSD1306_SWITCHCAPVCC = 0x2
+SSD1306_SETMASTERCONFIG = 0xAD
+SSD1306_SETAREACOLORLOWPOWERMODE = 0xD8
+SSD1306_SETLOOKUPTABLE = 0x91
 
 # Scrolling constants
 SSD1306_ACTIVATE_SCROLL = 0x2F
@@ -69,7 +72,7 @@ class SSD1306Base(object):
     and provide an implementation for the _initialize function.
     """
 
-    def __init__(self, width, height, rst, dc=None, sclk=None, din=None, cs=None,
+    def __init__(self, width, height, coloffset, rst, dc=None, sclk=None, din=None, cs=None,
                  gpio=None, spi=None, i2c_bus=None, i2c_address=SSD1306_I2C_ADDRESS,
                  i2c=None):
         self._log = logging.getLogger('Adafruit_SSD1306.SSD1306Base')
@@ -77,6 +80,7 @@ class SSD1306Base(object):
         self._i2c = None
         self.width = width
         self.height = height
+        self.coloffset = coloffset
         self._pages = height//8
         self._buffer = [0]*(width*self._pages)
         # Default to platform GPIO if not provided.
@@ -165,8 +169,8 @@ class SSD1306Base(object):
     def display(self):
         """Write display buffer to physical display."""
         self.command(SSD1306_COLUMNADDR)
-        self.command(0)              # Column start address. (0 = reset)
-        self.command(self.width-1)   # Column end address.
+        self.command(self.coloffset)                # Column start address.
+        self.command(self.coloffset + self.width-1) # Column end address.
         self.command(SSD1306_PAGEADDR)
         self.command(0)              # Page start address. (0 = reset)
         self.command(self._pages-1)  # Page end address.
@@ -239,7 +243,7 @@ class SSD1306_128_64(SSD1306Base):
                  spi=None, i2c_bus=None, i2c_address=SSD1306_I2C_ADDRESS,
                  i2c=None):
         # Call base class constructor.
-        super(SSD1306_128_64, self).__init__(128, 64, rst, dc, sclk, din, cs,
+        super(SSD1306_128_64, self).__init__(128, 64, 0, rst, dc, sclk, din, cs,
                                              gpio, spi, i2c_bus, i2c_address, i2c)
 
     def _initialize(self):
@@ -284,7 +288,7 @@ class SSD1306_128_32(SSD1306Base):
                  spi=None, i2c_bus=None, i2c_address=SSD1306_I2C_ADDRESS,
                  i2c=None):
         # Call base class constructor.
-        super(SSD1306_128_32, self).__init__(128, 32, rst, dc, sclk, din, cs,
+        super(SSD1306_128_32, self).__init__(128, 32, 0, rst, dc, sclk, din, cs,
                                              gpio, spi, i2c_bus, i2c_address, i2c)
 
     def _initialize(self):
@@ -326,7 +330,7 @@ class SSD1306_96_16(SSD1306Base):
                  spi=None, i2c_bus=None, i2c_address=SSD1306_I2C_ADDRESS,
                  i2c=None):
         # Call base class constructor.
-        super(SSD1306_96_16, self).__init__(96, 16, rst, dc, sclk, din, cs,
+        super(SSD1306_96_16, self).__init__(96, 16, 0, rst, dc, sclk, din, cs,
                                             gpio, spi, i2c_bus, i2c_address, i2c)
 
     def _initialize(self):
@@ -361,3 +365,46 @@ class SSD1306_96_16(SSD1306Base):
         self.command(0x40)
         self.command(SSD1306_DISPLAYALLON_RESUME)           # 0xA4
         self.command(SSD1306_NORMALDISPLAY)                 # 0xA6
+
+
+class SSD1305_128_32(SSD1306Base):
+    def __init__(self, rst, dc=None, sclk=None, din=None, cs=None, gpio=None,
+                 spi=None, i2c_bus=None, i2c_address=SSD1306_I2C_ADDRESS,
+                 i2c=None):
+        # Call base class constructor.
+        super(SSD1305_128_32, self).__init__(128, 32, 4, rst, dc, sclk, din, cs,
+                                             gpio, spi, i2c_bus, i2c_address, i2c)
+
+    def _initialize(self):
+        # Init procedure based on UG-2832ALBCG01 product specification
+        self.command(SSD1306_DISPLAYOFF)
+        self.command(SSD1306_SETDISPLAYCLOCKDIV)
+        self.command(0x10)
+        self.command(SSD1306_SETMULTIPLEX)
+        self.command(0x1F)
+        self.command(SSD1306_SETDISPLAYOFFSET)
+        self.command(0x00)
+        self.command(SSD1306_SETSTARTLINE | 0x0)
+        self.command(SSD1306_SETMASTERCONFIG)
+        self.command(0x8E)
+        self.command(SSD1306_SETAREACOLORLOWPOWERMODE)
+        self.command(0x05)
+        self.command(SSD1306_MEMORYMODE)
+        self.command(0x00)
+        self.command(SSD1306_SEGREMAP | 0x1)
+        self.command(SSD1306_COMSCANDEC)
+        self.command(SSD1306_SETCOMPINS)
+        self.command(0x12)
+        self.command(SSD1306_SETLOOKUPTABLE)
+        self.command(0x3F)
+        self.command(0x3F)
+        self.command(0x3F)
+        self.command(0x3F)
+        self.command(SSD1306_SETCONTRAST)
+        self.command(0xBF)
+        self.command(SSD1306_SETPRECHARGE)
+        self.command(0xD2)
+        self.command(SSD1306_SETVCOMDETECT)
+        self.command(0x08)
+        self.command(SSD1306_DISPLAYALLON_RESUME)
+        self.command(SSD1306_NORMALDISPLAY)
