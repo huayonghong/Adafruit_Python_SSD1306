@@ -408,3 +408,36 @@ class SSD1305_128_32(SSD1306Base):
         self.command(0x08)
         self.command(SSD1306_DISPLAYALLON_RESUME)
         self.command(SSD1306_NORMALDISPLAY)
+
+class SSD1309_128_64(SSD1306Base):
+    def __init__(self, rst, dc=None, sclk=None, din=None, cs=None, gpio=None,
+                 spi=None, i2c_bus=None, i2c_address=SSD1306_I2C_ADDRESS,
+                 i2c=None):
+        # Call base class constructor.
+        super(SSD1309_128_64, self).__init__(128, 64, 0, rst, dc, sclk, din, cs,
+                                             gpio, spi, i2c_bus, i2c_address, i2c)
+
+    def _initialize(self):
+        # Init procedure based on UG-2864ASWPG01 product specification
+        self.command(SSD1306_DISPLAYOFF)
+        self.command(SSD1306_MEMORYMODE)
+        self.command(0x00)
+        self.command(SSD1306_SETDISPLAYCLOCKDIV)
+        self.command(0xA0)
+        self.command(SSD1306_SETMULTIPLEX)
+        self.command(0x3F)
+        self.command(SSD1306_SETDISPLAYOFFSET)
+        self.command(0x00)
+        self.command(SSD1306_SETSTARTLINE | 0x0)
+        self.command(SSD1306_SEGREMAP | 0x1)
+        self.command(SSD1306_COMSCANDEC)
+        self.command(SSD1306_SETCOMPINS)
+        self.command(0x12)
+        self.command(SSD1306_SETCONTRAST)
+        self.command(0xDF)
+        self.command(SSD1306_SETPRECHARGE)
+        self.command(0x82)
+        self.command(SSD1306_SETVCOMDETECT)
+        self.command(0x34)
+        self.command(SSD1306_DISPLAYALLON_RESUME)
+        self.command(SSD1306_NORMALDISPLAY)
