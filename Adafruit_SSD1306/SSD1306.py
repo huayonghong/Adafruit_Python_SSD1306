@@ -172,22 +172,30 @@ class SSD1306Base(object):
             return
         if not self._bb[1] < self._bb[3]: # No pages
             return
+        if (self._bb[2]-self._bb[0]) % 16 != 0:
+            self._bb[0] = self._bb[0] - (self._bb[0] % 16)
+            self._bb[2] = self._bb[2] - (self._bb[2] % 16) + 16  ## FIXME Boundary check
         self.command(SSD1306_COLUMNADDR)
         self.command(self._bb[0])     # Column start address. (0 = reset)
         self.command(self._bb[2]-1)   # Column end address.
         self.command(SSD1306_PAGEADDR)
         self.command(self._bb[1])     # Page start address. (0 = reset)
         self.command(self._bb[3]-1)   # Page end address.
+        partial_buffer = [
+            self._buffer[page*(self.width) + x]
+                for page in range(self._bb[1], self._bb[3])
+                for x in range(self._bb[0], self._bb[2])
+        ]
         # Write buffer data.
         if self._spi is not None:
             # Set DC high for data.
             self._gpio.set_high(self._dc)
             # Write buffer.
-            self._spi.write(self._buffer)
+            self._spi.write(partial_buffer)
         else:
-            for i in range(0, len(self._buffer), 16):
+            for i in range(0, len(partial_buffer), 16):
                 control = 0x40   # Co = 0, DC = 0
-                self._i2c.writeList(control, self._buffer[i:i+16])
+                self._i2c.writeList(control, partial_buffer[i:i+16])
         self._bb = [self.width, self._pages, 0, 0]
 
     def image(self, image):
