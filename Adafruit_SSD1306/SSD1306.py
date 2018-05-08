@@ -79,6 +79,7 @@ class SSD1306Base(object):
         self.height = height
         self._pages = height//8
         self._buffer = [0]*(width*self._pages)
+        self._bb = [0, 0, self.width, self._pages]
         # Default to platform GPIO if not provided.
         self._gpio = gpio
         if self._gpio is None:
@@ -151,6 +152,7 @@ class SSD1306Base(object):
 
     def reset(self):
         """Reset the display."""
+        self._bb = [0, 0, self.width, self._pages]
         if self._rst is None:
             return
         # Set reset high for a millisecond.
@@ -162,14 +164,20 @@ class SSD1306Base(object):
         # Set reset high again.
         self._gpio.set_high(self._rst)
 
-    def display(self):
+    def display(self, force=False):
         """Write display buffer to physical display."""
+        if force:
+            self._bb = [0, 0, self.width, self._pages]
+        if not self._bb[0] < self._bb[2]: # No columns
+            return
+        if not self._bb[1] < self._bb[3]: # No pages
+            return
         self.command(SSD1306_COLUMNADDR)
-        self.command(0)              # Column start address. (0 = reset)
-        self.command(self.width-1)   # Column end address.
+        self.command(self._bb[0])     # Column start address. (0 = reset)
+        self.command(self._bb[2]-1)   # Column end address.
         self.command(SSD1306_PAGEADDR)
-        self.command(0)              # Page start address. (0 = reset)
-        self.command(self._pages-1)  # Page end address.
+        self.command(self._bb[1])     # Page start address. (0 = reset)
+        self.command(self._bb[3]-1)   # Page end address.
         # Write buffer data.
         if self._spi is not None:
             # Set DC high for data.
@@ -180,6 +188,7 @@ class SSD1306Base(object):
             for i in range(0, len(self._buffer), 16):
                 control = 0x40   # Co = 0, DC = 0
                 self._i2c.writeList(control, self._buffer[i:i+16])
+        self._bb = [self.width, self._pages, 0, 0]
 
     def image(self, image):
         """Set buffer to value of Python Imaging Library image.  The image should
@@ -204,13 +213,19 @@ class SSD1306Base(object):
                 for bit in [0, 1, 2, 3, 4, 5, 6, 7]:
                     bits = bits << 1
                     bits |= 0 if pix[(x, page*8+7-bit)] == 0 else 1
-                # Update buffer byte and increment to next byte.
-                self._buffer[index] = bits
+                # Update buffer byte, update change window and increment to next byte.
+                if self._buffer[index] != bits:
+                    self._buffer[index] = bits
+                    self._bb[0] = min(x, self._bb[0])
+                    self._bb[2] = max(x, self._bb[2])
+                    self._bb[1] = min(page, self._bb[1])
+                    self._bb[3] = max(page, self._bb[3])
                 index += 1
 
     def clear(self):
         """Clear contents of image buffer."""
         self._buffer = [0]*(self.width*self._pages)
+        self._bb = [0, 0, self.width, self._pages]
 
     def set_contrast(self, contrast):
         """Sets the contrast of the display.  Contrast should be a value between
