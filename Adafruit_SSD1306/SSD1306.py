@@ -173,8 +173,8 @@ class SSD1306Base(object):
         if not self._bb[1] < self._bb[3]: # No pages
             return
         if (self._bb[2]-self._bb[0]) % 16 != 0:
-            self._bb[0] = self._bb[0] - (self._bb[0] % 16)
-            self._bb[2] = self._bb[2] - (self._bb[2] % 16) + 16  ## FIXME Boundary check
+            self._bb[0] = (self._bb[0] // 16) * 16
+            self._bb[2] = ( (self._bb[2]+15) // 16) * 16
         self.command(SSD1306_COLUMNADDR)
         self.command(self._bb[0])     # Column start address. (0 = reset)
         self.command(self._bb[2]-1)   # Column end address.
@@ -225,9 +225,9 @@ class SSD1306Base(object):
                 if self._buffer[index] != bits:
                     self._buffer[index] = bits
                     self._bb[0] = min(x, self._bb[0])
-                    self._bb[2] = max(x, self._bb[2])
+                    self._bb[2] = max(x+1, self._bb[2])
                     self._bb[1] = min(page, self._bb[1])
-                    self._bb[3] = max(page, self._bb[3])
+                    self._bb[3] = max(page+1, self._bb[3])
                 index += 1
 
     def clear(self):
