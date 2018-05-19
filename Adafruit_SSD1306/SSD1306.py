@@ -177,9 +177,8 @@ class SSD1306Base(object):
             # Write buffer.
             self._spi.write(self._buffer)
         else:
-            for i in range(0, len(self._buffer), 16):
-                control = 0x40   # Co = 0, DC = 0
-                self._i2c.writeList(control, self._buffer[i:i+16])
+            control = 0x40   # Co = 0, DC = 0
+            self._i2c.writeList(control, self._buffer)
 
     def image(self, image):
         """Set buffer to value of Python Imaging Library image.  The image should
