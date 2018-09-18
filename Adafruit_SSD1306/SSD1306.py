@@ -329,7 +329,7 @@ class SSD1306_96_16(SSD1306Base):
                                             gpio, spi, i2c_bus, i2c_address, i2c)
 
     def _initialize(self):
-        # 128x32 pixel specific initialization.
+        # 96x16 pixel specific initialization.
         self.command(SSD1306_DISPLAYOFF)                    # 0xAE
         self.command(SSD1306_SETDISPLAYCLOCKDIV)            # 0xD5
         self.command(0x60)                                  # the suggested ratio 0x60
