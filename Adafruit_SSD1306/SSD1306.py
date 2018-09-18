@@ -22,6 +22,8 @@ from __future__ import division
 import logging
 import time
 
+from PIL import Image
+
 import Adafruit_GPIO as GPIO
 import Adafruit_GPIO.SPI as SPI
 
@@ -191,22 +193,19 @@ class SSD1306Base(object):
         if imwidth != self.width or imheight != self.height:
             raise ValueError('Image must be same dimensions as display ({0}x{1}).' \
                 .format(self.width, self.height))
-        # Grab all the pixels from the image, faster than getpixel.
-        pix = image.load()
-        # Iterate through the memory pages
-        index = 0
-        for page in range(self._pages):
-            # Iterate through all x axis columns.
-            for x in range(self.width):
-                # Set the bits for the column of pixels at the current position.
-                bits = 0
-                # Don't use range here as it's a bit slow
-                for bit in [0, 1, 2, 3, 4, 5, 6, 7]:
-                    bits = bits << 1
-                    bits |= 0 if pix[(x, page*8+7-bit)] == 0 else 1
-                # Update buffer byte and increment to next byte.
-                self._buffer[index] = bits
-                index += 1
+
+        # The bit order of the pages needs to be reversed,
+        # i.e. horizontal strips of height 8 need to be vertically flipped in place.
+        flipimage = image.transpose(Image.FLIP_TOP_BOTTOM)
+        outimage = flipimage.copy() # Create a new image with the same size/format.
+        for stripindex in range(self._pages):
+            srcrow = stripindex * 8
+            stripimage = flipimage.crop(box=(0, srcrow, self.width, srcrow + 8))
+            dstrow = (self._pages - 1 - stripindex) * 8
+            outimage.paste(stripimage, (0, dstrow))
+
+        outimage = outimage.transpose(Image.ROTATE_90)
+        self._buffer = list(bytearray(outimage.tobytes()))
 
     def clear(self):
         """Clear contents of image buffer."""
@@ -258,8 +257,8 @@ class SSD1306_128_64(SSD1306Base):
         else:
             self.command(0x14)
         self.command(SSD1306_MEMORYMODE)                    # 0x20
-        self.command(0x00)                                  # 0x0 act like ks0108
-        self.command(SSD1306_SEGREMAP | 0x1)
+        self.command(0x01)                                  # Vertical Addressing Mode
+        self.command(SSD1306_SEGREMAP | 0x0)                # column 0 to SEG0
         self.command(SSD1306_COMSCANDEC)
         self.command(SSD1306_SETCOMPINS)                    # 0xDA
         self.command(0x12)
@@ -303,8 +302,8 @@ class SSD1306_128_32(SSD1306Base):
         else:
             self.command(0x14)
         self.command(SSD1306_MEMORYMODE)                    # 0x20
-        self.command(0x00)                                  # 0x0 act like ks0108
-        self.command(SSD1306_SEGREMAP | 0x1)
+        self.command(0x01)                                  # Vertical Addressing Mode
+        self.command(SSD1306_SEGREMAP | 0x0)                # column 0 to SEG0
         self.command(SSD1306_COMSCANDEC)
         self.command(SSD1306_SETCOMPINS)                    # 0xDA
         self.command(0x02)
@@ -345,8 +344,8 @@ class SSD1306_96_16(SSD1306Base):
         else:
             self.command(0x14)
         self.command(SSD1306_MEMORYMODE)                    # 0x20
-        self.command(0x00)                                  # 0x0 act like ks0108
-        self.command(SSD1306_SEGREMAP | 0x1)
+        self.command(0x01)                                  # Vertical Addressing Mode
+        self.command(SSD1306_SEGREMAP | 0x0)                # column 0 to SEG0
         self.command(SSD1306_COMSCANDEC)
         self.command(SSD1306_SETCOMPINS)                    # 0xDA
         self.command(0x02)
